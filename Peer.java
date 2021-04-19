@@ -6,8 +6,6 @@ import java.nio.*;
 
 
 public class Peer {
-
-    ///Hi this is ShubhamCode
    
     //Peer info file data
     static int portNum = -1;
