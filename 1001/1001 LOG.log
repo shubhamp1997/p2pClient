@@ -1,0 +1,8 @@
+Apr 12, 2021 9:18:09 PM Peer logConnectionFrom
+INFO: Peer [1001] is connected from Peer [1002]
+Apr 12, 2021 9:18:10 PM Peer logBitfieldFrom
+INFO: Peer [1001] has received a bitfield message from [1002]
+Apr 12, 2021 9:18:11 PM Peer logConnectionFrom
+INFO: Peer [1001] is connected from Peer [1003]
+Apr 12, 2021 9:18:12 PM Peer logBitfieldFrom
+INFO: Peer [1001] has received a bitfield message from [1003]
