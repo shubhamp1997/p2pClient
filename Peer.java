@@ -56,10 +56,10 @@ public class Peer {
     static ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] peer) throws Exception {
 
         //Current peer ID
-        int pID = Integer.valueOf(args[0]);
+        int pID = Integer.valueOf(peer[0]);
 
         //Initializing log for current peer
         file = new File(System.getProperty("user.dir") + "/" + pID);
