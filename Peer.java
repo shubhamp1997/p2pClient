@@ -159,7 +159,6 @@ public class Peer {
                                 byteStream.flush();
                                 byteStream.reset();
                                 i++;
-
                             }
                             //ready after all the pieces are mapped 
                             fileReady = true;
@@ -192,7 +191,7 @@ public class Peer {
                             }
 
                             /**
-                             * Connect in increasing order of peerID,i.e. 1001, then 1002, and so on
+                             * Connects in increasing order of peerID,i.e. 1001, then 1002, and so on
                              */
                             if (id < pID) {
                                 //Host ID and host port from peerInfo
@@ -218,12 +217,14 @@ public class Peer {
                     new Thread(new Handler(peerSocket, pID)).start();
 
                 }
-            }
+            }     
+                    
         } finally {
-            //Close resources
+            //Close Socket
             serverSocket.close();
+            //Close File Handler
             for (java.util.logging.Handler fileHandler : logger.getHandlers()) {
-                fileHandler.close(); // must call fileHandler.close or a .LCK file will remain.
+                fileHandler.close(); 
             }
         }
     }
@@ -745,8 +746,7 @@ public class Peer {
                                     peerPieceList.remove(peerPieceList.indexOf(incomingPieceNumber));
                                 }
                                 logDownload(pID, serverPeerID, incomingPieceNumber);
-                                // informPeers(incomingPieceNumber, serverPeerID); //will be used for have
-                                // message
+                                sendHaveMessage(incomingPieceNumber, serverPeerID); //will be used for have message
 
                                 // THIS PIECE FUNCTIONALITY IS CURRENTLY CAUSING PROBLEMS
 
@@ -934,16 +934,15 @@ public class Peer {
         return bitfield;
     }
 
-    static void informPeers(int haveIndex, int serverID) throws IOException {
+    
+    static void sendHaveMessage(int haveIndex, int serverID) throws IOException {
 
         for (int n : neighborMap.keySet()) {
-            if (n != serverID) { // dont tell the person who just sent it to you
-
-                Socket tempSocket = neighborMap.get(n);
-                System.out.println("sending have to neighbor " + n);
-                // DataOutputStream all_dout = new
-                // DataOutputStream(tempSocket.getOutputStream());
-                OutputStream temp = tempSocket.getOutputStream();
+            if (n != serverID) 
+             {
+                Socket S1 = neighborMap.get(n);
+                System.out.println("Sending 'have' message to neighbor " + n);
+                OutputStream OS1 = S1.getOutputStream();
 
                 byte[] messageLength = ByteBuffer.allocate(4).putInt(4).array(); // allocate 4 bytes for index
                 byte[] messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("have")).array();
@@ -954,8 +953,8 @@ public class Peer {
                 byteStream.write(requestIndex);
 
                 byte[] msg = byteStream.toByteArray();
-                temp.flush();
-                temp.write(msg);
+                OS1.flush();
+                OS1.write(msg);
                 byteStream.reset();
             }
 
@@ -963,7 +962,7 @@ public class Peer {
     }
 
     /** Logger Functions: 
-     * called to maintain Logs */ 
+     * These are called to maintain Logs */ 
 
     /** Logs to which peer the connection has been established,
      *  Takes 2 peers and logs their Connection */
@@ -1038,7 +1037,7 @@ public class Peer {
         logger.info("Peer [" + peerID + "] has downloaded the complete file.");
     }
 
-    /** Logs when every peer has downloaded the complete file */
+    /** Prints when every peer has downloaded the complete file */
     static void updatePeersDone(int peerID) {
         boolean done = true;
         peersDone.put(peerID, true);
