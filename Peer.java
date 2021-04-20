@@ -62,7 +62,7 @@ public class Peer {
         int pID = Integer.valueOf(peer[0]);
 
         //Initializing log for current peer
-        file = new File(System.getProperty("user.dir") + "/" + pID);
+        file = new File(System.getProperty("user.dir") + "/" + "peer_" + pID);
         file.mkdir();
         String logFile = file.getAbsolutePath() + "/" + pID + " LOG.log";
 
