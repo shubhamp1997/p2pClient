@@ -22,8 +22,8 @@ static int floatPiece = -1;
 static double fileSize = -1;
 static int numPieces = -1;
 
-//Client List array, contains the list of peers
-static ArrayList<Socket> clientList = new ArrayList<Socket>();
+//Neighbor List array, contains the list of peers
+static ArrayList<Socket> NeighborList = new ArrayList<Socket>();
 
 static FileHandler fileHandler;
 static File file;
@@ -180,7 +180,7 @@ public static void main(String[] peer) throws Exception {
 
                 //Add peer connection socket inorder to interact with all the peers
                 Socket peerSocket = serverSocket.accept();
-                clientList.add(peerSocket); 
+                NeighborList.add(peerSocket); 
                 
                 //Initialize Connection handler by passing peerSocket and current peerID
                 new Handler(peerSocket, pID).start();
@@ -217,7 +217,7 @@ public static void main(String[] peer) throws Exception {
                             Socket requestSocket = new Socket(hostId, hostPort);
 
                             //New thread to connect to peer and put them into neighborMap
-                            new Thread(new Client(hostPort, hostId, pID, requestSocket)).start();
+                            new Thread(new Neighbor(hostPort, hostId, pID, requestSocket)).start();
                             neighborMap.put(id, requestSocket);
                         }
 
@@ -226,7 +226,7 @@ public static void main(String[] peer) throws Exception {
                     peerConnected = true; 
                 }
                 Socket peerSocket = serverSocket.accept();
-                clientList.add(peerSocket); // will be used to communicate with all clients
+                NeighborList.add(peerSocket); // will be used to communicate with all Neighbors
                 new Thread(new Handler(peerSocket, pID)).start();
 
             }
@@ -258,7 +258,7 @@ static class Handler extends Thread {
     //Initialise handshake buffer and peer variables
     private byte[] received = new byte[32]; // 32 set for handshake message
     private int pID = -1;
-    int clientPeerID = -1;
+    int NeighborPeerID = -1;
    
     //Hashmap for peer piece information
     HashMap<Integer, Boolean> peerPieceMap = new HashMap<Integer, Boolean>();
@@ -294,14 +294,14 @@ static class Handler extends Thread {
 
                     //first: Waiting for the response 
                     dataIn.read(received); // read message into the msg 32 byte buffer
-                    clientPeerID = ByteBuffer.wrap(Arrays.copyOfRange(received, 28, 32)).getInt();
-                    neighborMap.put(clientPeerID, connection);
+                    NeighborPeerID = ByteBuffer.wrap(Arrays.copyOfRange(received, 28, 32)).getInt();
+                    neighborMap.put(NeighborPeerID, connection);
 
-                    logConnectionFrom(pID, clientPeerID);
+                    logConnectionFrom(pID, NeighborPeerID);
 
-                    downloadRates.put(clientPeerID, 0); // set up client in map
+                    downloadRates.put(NeighborPeerID, 0); // set up Neighbor in map
 
-                    // set up handshake message to send after receiving one from the client
+                    // set up handshake message to send after receiving one from the Neighbor
 
                     // header
                     String head = "P2PFILESHARINGPROJ"; 
@@ -321,7 +321,7 @@ static class Handler extends Thread {
                     byteStream.write(peerID);
 
                     byte[] handshake = byteStream.toByteArray();
-                    sendMessage(handshake); // send handshake message to client
+                    sendMessage(handshake); // send handshake message to Neighbor
 
                     byteStream.reset();
                   
@@ -377,12 +377,12 @@ static class Handler extends Thread {
                     }
 
                     //log the bitfield info
-                    logBitfieldFrom(pID, clientPeerID);
-                    neighborsPieceMap.put(clientPeerID, peerPieceMap); // global (Peer) connection map
+                    logBitfieldFrom(pID, NeighborPeerID);
+                    neighborsPieceMap.put(NeighborPeerID, peerPieceMap); // global (Peer) connection map
 
                     if (!peerPieceMap.containsValue(false)) {
-                        System.out.println(pID + " says that " + clientPeerID + "is done!");
-                        peersDone.replace(clientPeerID, true); // this peer is done
+                        System.out.println(pID + " says that " + NeighborPeerID + "is done!");
+                        peersDone.replace(NeighborPeerID, true); // this peer is done
                     }
 
                     /**
@@ -402,7 +402,7 @@ static class Handler extends Thread {
                     bitfieldMessage = byteStream.toByteArray();
 
                     sendMessage(bitfieldMessage);
-                    System.out.println("post send bitfield to " + clientPeerID);
+                    System.out.println("post send bitfield to " + NeighborPeerID);
 
                     // empty out byteStream
                     byteStream.flush();
@@ -427,14 +427,14 @@ static class Handler extends Thread {
                         if (Arrays.equals(incomingMessageType, messageTypeMap.get("interested"))) {
                             //send piece
                             System.out.println("interested functionality");
-                            logInterested(pID, clientPeerID);
+                            logInterested(pID, NeighborPeerID);
                             sendPiece(1); 
                         } 
                         
                         // if the message is "not_interested"
                         else if (Arrays.equals(incomingMessageType, messageTypeMap.get("not_interested"))) {
                             System.out.println("not_interested functionality");
-                            logNotInterested(pID, clientPeerID);
+                            logNotInterested(pID, NeighborPeerID);
                         } 
                        
                          //if the message is "have", means peer HAVE the piece
@@ -443,12 +443,12 @@ static class Handler extends Thread {
                             int pieceNum = ByteBuffer.wrap(Arrays.copyOfRange(received, 5, 9)).getInt();
                             
                             //log "have" info for that piece
-                            logHave(pID, clientPeerID, pieceNum);
+                            logHave(pID, NeighborPeerID, pieceNum);
 
                             // Change piece map value to true as this peer have that piece
                             peerPieceMap.replace(pieceNum, true); 
                             if (!peerPieceMap.containsValue(false)) {
-                                System.out.println(pID + " says that " + clientPeerID + "is done!");
+                                System.out.println(pID + " says that " + NeighborPeerID + "is done!");
                             }                                                                
                             received = new byte[20 + pieceSize];  // for buffer
 
@@ -467,7 +467,7 @@ static class Handler extends Thread {
                             //Inform piece map and set the value to true
                             peerPieceMap.replace(pieceNumInt, true);                                
                             if (!peerPieceMap.containsValue(false)) {
-                                peersDone.replace(clientPeerID, true);
+                                peersDone.replace(NeighborPeerID, true);
                                 if (!peersDone.containsValue(false)) {
                                     System.out.println("File Received");
                                 }
@@ -488,8 +488,8 @@ static class Handler extends Thread {
             }
         } 
         catch (IOException ioException) {
-            System.out.println("Disconnect with Client " + clientPeerID);
-            logger.warning("Disconnection with " + clientPeerID + " due to IOException");
+            System.out.println("Disconnect with Neighbor " + NeighborPeerID);
+            logger.warning("Disconnection with " + NeighborPeerID + " due to IOException");
         } 
         finally {
             // Close connections
@@ -498,8 +498,8 @@ static class Handler extends Thread {
                 dataOut.close();
                 connection.close();
             } catch (IOException ioException) {
-                System.out.println("Disconnect with Client " + clientPeerID);
-                logger.warning("Disconnection with " + clientPeerID + " due to IOException");
+                System.out.println("Disconnect with Neighbor " + NeighborPeerID);
+                logger.warning("Disconnection with " + NeighborPeerID + " due to IOException");
             }
         }
     }
@@ -541,15 +541,15 @@ static class Handler extends Thread {
             }
         } catch (IOException ioException) {
             ioException.printStackTrace();
-            logger.warning(pID + " was unable to send a message to " + clientPeerID);
+            logger.warning(pID + " was unable to send a message to " + NeighborPeerID);
         }
     }
 
 }
 
 
-//Handles same functionalities for the client side
-static class Client extends Thread {
+//Handles same functionalities for the Neighbor side
+static class Neighbor extends Thread {
 
     Socket requestSocket;
     DataInputStream cDIN;
@@ -580,18 +580,18 @@ static class Client extends Thread {
     int serverPeerID = -1;
 
     /**
-     * each "client"(peer) can only connect to one other server, and keeps track of that
+     * each "Neighbor"(peer) can only connect to one other server, and keeps track of that
      * map
      */
     HashMap<Integer, Boolean> peerPieceMap = new HashMap<Integer, Boolean>();
     // peer piece list (to make it easier to request pieces)
     ArrayList<Integer> peerPieceList = new ArrayList<>();
 
-    // whether to continue running client loop
-    boolean clientLoop = true;
+    // whether to continue running Neighbor loop
+    boolean NeighborLoop = true;
 
-    //Client Getter
-    public Client(int portNum, String hostname, int pID, Socket requestSocket) {
+    //Neighbor Getter
+    public Neighbor(int portNum, String hostname, int pID, Socket requestSocket) {
         this.pID = pID;
         this.hostname = hostname;
         this.portNum = portNum;
@@ -604,16 +604,16 @@ static class Client extends Thread {
             // just to be safe
             byteStream.reset();
 
-            // input and output streams for client
+            // input and output streams for Neighbor
             cDIN = new DataInputStream(requestSocket.getInputStream());
             cDOUT = new DataOutputStream(requestSocket.getOutputStream());
             cDOUT.flush();
 
-            while (clientLoop) {
+            while (NeighborLoop) {
 
                 if (!handshakeDone) {
 
-                    // client sends handshake first
+                    // Neighbor sends handshake first
 
                     String headerStr = "P2PFILESHARINGPROJ"; // header
                     byte[] header = headerStr.getBytes(); // header to bytes
@@ -621,7 +621,7 @@ static class Client extends Thread {
                     Arrays.fill(zerobits, (byte) 0);
                     byte[] peerID = ByteBuffer.allocate(4).putInt(pID).array(); // peer ID in byte array
                                                                                      
-                    // System.out.println("client sending my peer id: " + pID);
+                    // System.out.println("Neighbor sending my peer id: " + pID);
 
                     // write all information to a byte array
                     byteStream.reset();
@@ -631,10 +631,10 @@ static class Client extends Thread {
 
                     byte[] handshake = byteStream.toByteArray();
 
-                    sendMessage(handshake); // client sends handshake message to server
+                    sendMessage(handshake); // Neighbor sends handshake message to server
                     byteStream.reset();
 
-                    // client waiting for handshake mesage from server
+                    // Neighbor waiting for handshake mesage from server
                     byte[] incomingHandshake = new byte[32]; // empty byte array for incoming handshake
 
                     cDIN.read(incomingHandshake); // read in the incoming handshake
@@ -650,7 +650,7 @@ static class Client extends Thread {
 
                 } else if (!bitfieldDone) {
                     System.out.println("sending bitfield");
-                    // client sends bitfield first
+                    // Neighbor sends bitfield first
                     byte bitfield[] = initializeBitfield();
 
                     int payload = bitfield.length; // payload is done incorrectly when sending pieces /// check ?
@@ -676,7 +676,7 @@ static class Client extends Thread {
                     // read the first 5 bytes for message type and size
                     System.out.println("waiting for next message");
                     byte[] incomingMessage = new byte[5]; // only done once
-                    boolean clientQuit = false; // used for when to quit to write to file
+                    boolean NeighborQuit = false; // used for when to quit to write to file
 
                     while (cDIN.read(incomingMessage) > -1) {
 
@@ -708,7 +708,7 @@ static class Client extends Thread {
                                     if (bs.charAt(j) == '0') {
                                         peerPieceMap.put(counter, false);
                                     } else if (bs.charAt(j) == '1') {
-                                        if (!(pieceMap.containsKey(counter))) { // if client doesn't already have
+                                        if (!(pieceMap.containsKey(counter))) { // if Neighbor doesn't already have
                                                                                 // this piece
                                             peerPieceList.add(counter); // this is used to request pieces
                                         }
@@ -778,7 +778,7 @@ static class Client extends Thread {
 
                         } else if (Arrays.equals(messageType, messageTypeMap.get("piece"))) { 
 
-                            // client_din.read(incomingMessage, 5, 9); // check on this
+                            // Neighbor_din.read(incomingMessage, 5, 9); // check on this
 
                             byte[] fileIndex = Arrays.copyOfRange(incomingMessage, 5, 9);
                             int incomingPieceNumber = ByteBuffer.wrap(fileIndex).getInt(); // number corresponds to
@@ -825,17 +825,17 @@ static class Client extends Thread {
                             System.out.println("piece map size: " + pieceMap.size());
                             System.out.println("numPieces: " + numPieces);
                             if (pieceMap.size() == numPieces) {
-                                // clientLoop = false;
+                                // NeighborLoop = false;
                                 // System.out.println("755 true");
-                                clientQuit = true;
+                                NeighborQuit = true;
                             }
 
                         }
-                        // client loop stays open to maintain connection until end of program
-                        if (clientQuit) {
+                        // Neighbor loop stays open to maintain connection until end of program
+                        if (NeighborQuit) {
 
                             System.out.println("quit");
-                            // when done, we need to write the file to the client's folder
+                            // when done, we need to write the file to the Neighbor's folder
                             logDone(pID);
                             byteStream.reset();
 
@@ -855,12 +855,12 @@ static class Client extends Thread {
                                 fos.write(finalFile);
                             }
 
-                            // System.out.println("Client: final file has been written");
+                            // System.out.println("Neighbor: final file has been written");
                             byteStream.flush();
                             byteStream.reset();
 
-                            // Now, this client becomes an uploader only
-                            clientLoop = false;
+                            // Now, this Neighbor becomes an uploader only
+                            NeighborLoop = false;
                         }
 
                         incomingMessage = new byte[100 + pieceSize];

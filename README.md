@@ -1,2 +1,2 @@
-# p2pClient
-Computer Networks Project : BitTorrent like P2P Client.
+# p2pNeighbor
+Computer Networks Project : BitTorrent like P2P Neighbor.
