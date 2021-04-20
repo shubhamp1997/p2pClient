@@ -55,7 +55,6 @@ public class peerProcess {
     // Byte Array Output Stream for sending the byte arrays
     static ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
 
-
     public static void main(String[] peer) throws Exception {
 
         //Current peer ID
@@ -258,10 +257,7 @@ public class peerProcess {
         private byte[] received = new byte[32]; // 32 set for handshake message
         private int pID = -1;
         int clientPeerID = -1;
-
-        //To start and stop server
-        boolean serverProc = true;
-
+       
         //Hashmap for peer piece information
         HashMap<Integer, Boolean> peerPieceMap = new HashMap<Integer, Boolean>();
 
@@ -275,9 +271,13 @@ public class peerProcess {
             this.pID = pID;
         }
 
+         //To start and stop server
+         boolean serverProc = true;
+
         @Override
         public void run() {
 
+            //Try to connect with the socket
             System.out.println("Connecting with: " + connection.toString());
             try {
 
@@ -290,9 +290,10 @@ public class peerProcess {
 
                 while (serverProc) {
 
+                    // First: perform handshake if not already
                     if (!handshakeDone) {
 
-                        //Waiting for the response first
+                        //first: Waiting for the response 
                         dataIn.read(received); // read message into the msg 32 byte buffer
                         clientPeerID = ByteBuffer.wrap(Arrays.copyOfRange(received, 28, 32)).getInt();
                         neighborMap.put(clientPeerID, connection);
@@ -302,11 +303,17 @@ public class peerProcess {
                         downloadRates.put(clientPeerID, 0); // set up client in map
 
                         // set up handshake message to send after receiving one from the client
-                        String head = "P2PFILESHARINGPROJ"; // header
+
+                        // header
+                        String head = "P2PFILESHARINGPROJ"; 
                         byte[] header = head.getBytes(); // header to bytes
-                        byte[] zerobits = new byte[10]; // 10 byte zero bits
+
+                        // 10 byte zero bits
+                        byte[] zerobits = new byte[10]; 
                         Arrays.fill(zerobits, (byte) 0);
-                        byte[] peerID = ByteBuffer.allocate(4).putInt(pID).array(); // peer ID in byte array
+
+                        // peer ID in byte array
+                        byte[] peerID = ByteBuffer.allocate(4).putInt(pID).array(); 
 
                         // write all information to a byte array
                         byteStream.reset();
@@ -319,15 +326,25 @@ public class peerProcess {
 
                         byteStream.reset();
                       
-                    } else if (!bitfieldDone) {
+                    } 
+                   
+                    // Second: perform bitField if not already
+                    else if (!bitfieldDone) {
 
-                        // server is waiting for bitfield message from client
-                        System.out.println("Peer: " + pID + " awaiting bitfield");
-                        received = new byte[128]; // empty buffer
+                        /** FIRST: await and Read incoming bitfield */
 
-                        // server received bitfield message
-                        dataIn.read(received, 0, 5); // incoming bitfield from client peer header
+                        // empty buffer to store received bitfield message in
+                        received = new byte[128];
 
+                        // The bitfield has not been received yet; awaiting.
+                        System.out.println("Peer: " + pID + " awaiting bitfield");                      
+                        
+                        // Read into buffer
+                        dataIn.read(received, 0, 5); // incoming bitfield from peer header
+
+                        //parse bitfield message:
+
+                        // parse bitfield length
                         int bitfieldLength = ByteBuffer.wrap(Arrays.copyOfRange(received, 0, 4)).getInt();
 
                         byte[] bitfieldMessage = new byte[bitfieldLength];
@@ -335,14 +352,22 @@ public class peerProcess {
                         dataIn.read(bitfieldMessage);
                         int counter = 1; // used to count pieces
 
+                        //read complete the bitfield message                        
                         for (int i = 0; i < bitfieldMessage.length; i++) {
-                            String bs = String.format("%7s", Integer.toBinaryString(bitfieldMessage[i])).replace(' ',
-                                    '0'); // ensure 0 bits are counted
+                             
+                            // ensure 0 bits are counted, replace empty(' ') 0 bits with '0'
+                            String st = String.format("%7s", Integer.toBinaryString(bitfieldMessage[i])).replace(' ','0');
 
-                            for (int j = 0; j < bs.length(); j++) {
-                                if (bs.charAt(j) == '0') {
+                            for (int j = 0; j < st.length(); j++) {
+                                if (st.charAt(j) == '0') {                                    
+                                    /**
+                                     * //if the bitfield message contains '0' it means 
+                                     * it does not have the piece, hence we will put false for that piece
+                                     * on the piece map
+                                     */
                                     peerPieceMap.put(counter, false); // local connection map
-                                } else if (bs.charAt(j) == '1') {
+                                } else if (st.charAt(j) == '1') {
+                                    //opposite of above
                                     peerPieceMap.put(counter, true); // local connection map
                                 }
                                 if (counter == numPieces) {
@@ -352,6 +377,7 @@ public class peerProcess {
                             }
                         }
 
+                        //log the bitfield info
                         logBitfieldFrom(pID, clientPeerID);
                         neighborsPieceMap.put(clientPeerID, peerPieceMap); // global (Peer) connection map
 
@@ -360,7 +386,9 @@ public class peerProcess {
                             peersDone.replace(clientPeerID, true); // this peer is done
                         }
 
-                        // send bitfield message
+                        /**
+                         * THEN: Send bitfield message 
+                         */
 
                         byte bitfield[] = initializeBitfield();
 
@@ -384,35 +412,49 @@ public class peerProcess {
                         // from here on, server will start processing regular messages
                         bitfieldDone = true;
 
-                    } else {
-
-                        while (dataIn.read(received) > -1) { // waiting for input
+                    } 
+                    
+                    // else check Actual message type and then perfrom action based on that.
+                    else {
+                        // while data inputer stream is getting input
+                        while (dataIn.read(received) > -1) { 
 
                             // retrieve message type
                             byte[] incomingMessageType = Arrays.copyOfRange(received, 4, 5);
 
-                            // check the message type
-                            if (Arrays.equals(incomingMessageType, messageTypeMap.get("interested"))) {
+                            // Perfrom action according to message type
 
+                            //if the message is "interested"
+                            if (Arrays.equals(incomingMessageType, messageTypeMap.get("interested"))) {
+                                //send piece
                                 System.out.println("interested functionality");
-                                sendPiece(1); // this needs to be changed!
-                                // received = new byte[32];
-                                // din.reset();
-                            } else if (Arrays.equals(incomingMessageType, messageTypeMap.get("not_interested"))) {
+                                sendPiece(1); 
+                            } 
+                            
+                            // if the message is "not_interested"
+                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("not_interested"))) {
                                 System.out.println("not_interested functionality");
-                            } else if (Arrays.equals(incomingMessageType, messageTypeMap.get("have"))) { // SERVER HAVE
+                            } 
+                           
+                             //if the message is "have"
+                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("have"))) { // SERVER HAVE
 
                                 int pieceNum = ByteBuffer.wrap(Arrays.copyOfRange(received, 5, 9)).getInt();
+                                
+                                //log "have" info for that piece
                                 logHave(pID, clientPeerID, pieceNum);
 
-                                peerPieceMap.replace(pieceNum, true); // the peer now has this piece
+                                // Change piece map value to true as this peer have that piece
+                                peerPieceMap.replace(pieceNum, true); 
                                 if (!peerPieceMap.containsValue(false)) {
                                     System.out.println(pID + " says that " + clientPeerID + "is done!");
-                                }
+                                }                                                                
+                                received = new byte[20 + pieceSize];  // for buffer
 
-                                received = new byte[20 + pieceSize]; // just for buffer
+                            }
 
-                            } else if (Arrays.equals(incomingMessageType, messageTypeMap.get("request"))) { // REQUEST
+                            //if peer has sent piece request
+                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("request"))) { // REQUEST
                                 // if not choked
                                 byte[] pieceNumToSend = Arrays.copyOfRange(received, 5, 9);
                                 int pieceNumInt = ByteBuffer.wrap(pieceNumToSend).getInt();
