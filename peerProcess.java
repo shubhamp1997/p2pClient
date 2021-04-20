@@ -141,6 +141,19 @@ public class peerProcess {
                         File file = new File(fileName);
                         System.out.println(file.length());
 
+                        try (FileInputStream fileInputStream = new FileInputStream(file);){
+
+                            FileOutputStream fileOutpoutStream = new FileOutputStream(System.getProperty("user.dir") + "/" + "peer_" + pID + "/" + fileName);
+                            byte[] buffer_temp = new byte[1024];
+                            int length;
+
+                            while((length = fileInputStream.read(buffer_temp)) > 0) {
+                                fileOutpoutStream.write(buffer_temp, 0, length);
+                            }
+
+                            fileOutpoutStream.close();
+                        }
+
                         //Mapping file data
                         try (FileInputStream fileInputStream = new FileInputStream(file);
                                 BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
