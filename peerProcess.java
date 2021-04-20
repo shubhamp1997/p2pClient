@@ -428,7 +428,12 @@ public class peerProcess {
                                 //send piece
                                 System.out.println("interested functionality");
                                 logInterested(pID, clientPeerID);
-                                sendPiece(1); 
+                                // Retrieve which piece the peer wants
+                                byte[] pieceNumToSend = Arrays.copyOfRange(received, 5, 9);
+                                int pieceNumInt = ByteBuffer.wrap(pieceNumToSend).getInt();                                                       
+                               
+                                //Initiate sendPiece for that piece number
+                                sendPiece(pieceNumInt);
                             } 
                             
                             // if the message is "not_interested"
@@ -441,10 +446,20 @@ public class peerProcess {
                             else if (Arrays.equals(incomingMessageType, messageTypeMap.get("have"))) { 
 
                                 int pieceNum = ByteBuffer.wrap(Arrays.copyOfRange(received, 5, 9)).getInt();
-                                
+                                 // Retrieve which piece the peer wants
+                                 byte[] pieceNumToSend = Arrays.copyOfRange(received, 5, 9);
+                                 int pieceNumInt = ByteBuffer.wrap(pieceNumToSend).getInt();
+
+                                 if(pID<clientPeerID){
+                                    if(!pieceMap.containsKey(pieceNumInt)){                                    
+                                        System.out.println("Sending interested message");
+                                        sendInterestedMessage(pieceNumInt, clientPeerID);     
+                                    }
+                                 }
                                 //log "have" info for that piece
                                 logHave(pID, clientPeerID, pieceNum);
 
+                                
                                 // Change piece map value to true as this peer have that piece
                                 peerPieceMap.replace(pieceNum, true); 
                                 if (!peerPieceMap.containsValue(false)) {
@@ -455,15 +470,24 @@ public class peerProcess {
                             }
 
                             //if peer has sent request message for a piece
-                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("request"))) { 
-                              
+                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("request"))) {                              
+
+                               
                                 // Retrieve which piece the peer wants
                                 byte[] pieceNumToSend = Arrays.copyOfRange(received, 5, 9);
                                 int pieceNumInt = ByteBuffer.wrap(pieceNumToSend).getInt();
+
+
+                                if(pieceMap.containsKey(pieceNumInt)){
+                                    System.out.println("SendingHaveMessage");                                    
+                                    sendHaveMessage(pieceNumInt, clientPeerID);
+                                }
+                                                          
                                
                                 //Initiate sendPiece for that piece number
-                                sendPiece(pieceNumInt);
-
+                                // if(pID<clientPeerID){sendPiece(pieceNumInt);}
+                                //
+                                
                                 //Inform piece map and set the value to true
                                 peerPieceMap.replace(pieceNumInt, true);                                
                                 if (!peerPieceMap.containsValue(false)) {
@@ -504,29 +528,52 @@ public class peerProcess {
             }
         }
         
+        private void sendHaveMessage(int pieceNumInt, int serverPeerID) throws IOException {
+            //initialise a buffer to store piece using piece map
+            // byte[] pieceBuffer = pieceMap.get(pieceNumInt);
+            System.out.println(" have pohocha");
+             //  Construct Message header
+             messageLength = ByteBuffer.allocate(4).putInt(4).array(); //piece size
+             messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("have")).array();  //message type
+             indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+
+             //write Message header
+             byteStream.reset(); // reset bytestream       
+             byteStream.write(messageLength);
+             byteStream.write(messageType); 
+             byteStream.write(indexField);
+             //Write piece data
+            // byteStream.write(pieceBuffer);
+             byte[] sendMessage = byteStream.toByteArray();
+             //call the sendMessage function and provide it with the complete message
+             sendMessage(sendMessage); // sending the piece message
+             byteStream.reset();
+       }
+
         // Send piece function: Takes a piece number and sends it in a message
         void sendPiece(int pieceNumInt) throws IOException {
 
-            //initialise a buffer to store piece using piece map
-            byte[] pieceBuffer = pieceMap.get(pieceNumInt);
-            int payload = pieceBuffer.length;
+            System.out.println("send piece");
+          //initialise a buffer to store piece using piece map
+          byte[] pieceBuffer = pieceMap.get(pieceNumInt);
+          int payload = pieceBuffer.length;
 
-            //  Construct Message header
-            messageLength = ByteBuffer.allocate(4).putInt(payload).array(); //piece size
-            messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("piece")).array();  //message type
-            indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+          //  Construct Message header
+          messageLength = ByteBuffer.allocate(4).putInt(payload).array(); //piece size
+          messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("piece")).array();  //message type
+          indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
 
-            //write Message header
-            byteStream.reset(); // reset bytestream       
-            byteStream.write(messageLength);
-            byteStream.write(messageType); 
-            byteStream.write(indexField);
-            //Write piece data
-            byteStream.write(pieceBuffer);
-            byte[] sendMessage = byteStream.toByteArray();
-            //call the sendMessage function and provide it with the complete message
-            sendMessage(sendMessage); // sending the piece message
-            byteStream.reset();
+          //write Message header
+          byteStream.reset(); // reset bytestream
+          byteStream.write(messageLength);
+          byteStream.write(messageType); 
+          byteStream.write(indexField);
+          //Write piece data
+          byteStream.write(pieceBuffer);
+          byte[] sendMessage = byteStream.toByteArray();
+          //call the sendMessage function and provide it with the complete message
+          sendMessage(sendMessage); // sending the piece message
+          byteStream.reset();
         }
 
         //Send message: takes a message and writes it to the output stream
@@ -534,6 +581,7 @@ public class peerProcess {
             try {
                 dataOut.flush();
                 dataOut.write(message);
+            
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -543,6 +591,29 @@ public class peerProcess {
                 ioException.printStackTrace();
                 logger.warning(pID + " was unable to send a message to " + clientPeerID);
             }
+        }
+
+        public void sendInterestedMessage(int pieceNumInt, int clientPeerID) throws IOException {
+
+              //initialise a buffer to store piece using piece map
+             // byte[] pieceBuffer = pieceMap.get(pieceNumInt);
+             
+              //  Construct Message header
+                messageLength = ByteBuffer.allocate(4).putInt(4).array(); //piece size
+                messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("interested")).array();  //message type
+                indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+
+                //write Message header
+                byteStream.reset(); // reset bytestream       
+                byteStream.write(messageLength);
+                byteStream.write(messageType); 
+                byteStream.write(indexField);
+                //Write piece data
+               // byteStream.write(pieceBuffer);
+                byte[] sendMessage = byteStream.toByteArray();
+                //call the sendMessage function and provide it with the complete message
+                sendMessage(sendMessage); // sending the piece message
+                byteStream.reset();
         }
 
     }
@@ -612,9 +683,7 @@ public class peerProcess {
                 while (clientLoop) {
 
                     if (!handshakeDone) {
-
                         // client sends handshake first
-
                         String headerStr = "P2PFILESHARINGPROJ"; // header
                         byte[] header = headerStr.getBytes(); // header to bytes
                         byte[] zerobits = new byte[10]; // 10 byte zero bits
@@ -648,7 +717,8 @@ public class peerProcess {
                         handshakeDone = true; // handshake received, do not do this part again
                         byteStream.reset();
 
-                    } else if (!bitfieldDone) {
+                    } 
+                    else if (!bitfieldDone) {
                         System.out.println("sending bitfield");
                         // client sends bitfield first
                         byte bitfield[] = initializeBitfield();
@@ -670,9 +740,8 @@ public class peerProcess {
                         byteStream.flush();
                         byteStream.reset();
 
-                    } else { 
-                        // Actual Messages
-
+                    } 
+                    else { 
                         // read the first 5 bytes for message type and size
                         System.out.println("waiting for next message");
                         byte[] incomingMessage = new byte[5]; // only done once
@@ -685,11 +754,24 @@ public class peerProcess {
                             int messageSizeInt = ByteBuffer.wrap(messageSize).getInt();
                             byte[] messageType = Arrays.copyOfRange(incomingMessage, 4, 5); // getting the message type
 
-                            if (Arrays.equals(messageType, messageTypeMap.get("choke"))) {
+                            System.out.println(messageType);
+                            //System.out.println(messageTypeMap.get("unchoke"));
+                            System.out.println(messageTypeMap.get("bitfield"));
+                            System.out.println(messageTypeMap.get("interested"));
+                            System.out.println(messageTypeMap.get("choke"));
+                            System.out.println(messageTypeMap.get("request"));                            
+                            System.out.println(messageTypeMap.get("have"));
+                                                      
+                            System.out.println(messageTypeMap.get("piece"));
+                                                      
+                            System.out.println(messageTypeMap.get("uninterested"));
+
+                            
+                             if (Arrays.equals(messageType, messageTypeMap.get("choke"))) {
                                 System.out.println("choke functionality");
                                 choked = true;
-                            } else if (Arrays.equals(messageType, messageTypeMap.get("bitfield"))) { // BITFIELD, only
-                                                                                                     // done once
+                            } 
+                            else if (Arrays.equals(messageType, messageTypeMap.get("bitfield"))) { // BITFIELD, only
 
                                 logBitfieldFrom(pID, serverPeerID);
 
@@ -735,51 +817,45 @@ public class peerProcess {
                                     System.out.println("dang");
                                 }
 
-                                // build header
-                                messageLength = ByteBuffer.allocate(4).putInt(4).array(); // allocate 4 bytes for index
-                                messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("request")).array();
-                                byte[] requestIndex = ByteBuffer.allocate(4).putInt(requestPieceNum).array();
 
-                                byteStream.reset();
+                                if(isOwner==0){
+                                    // build header
+                                    messageLength = ByteBuffer.allocate(4).putInt(4).array(); // allocate 4 bytes for index
+                                    messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("request")).array();
+                                    byte[] requestIndex = ByteBuffer.allocate(4).putInt(requestPieceNum).array();
 
-                                // header & request index
-                                byteStream.write(messageLength);
-                                byteStream.write(messageType);
-                                byteStream.write(requestIndex);
+                                    byteStream.reset();
 
-                                byte[] msg = byteStream.toByteArray();
-                                System.out.println("sending first request");
-                                sendMessage(msg); // requesting the piece
-                                byteStream.reset();
+                                    // header & request index
+                                    byteStream.write(messageLength);
+                                    byteStream.write(messageType);
+                                    byteStream.write(requestIndex);
 
-                            } else if (Arrays.equals(messageType, messageTypeMap.get("unchoke"))) {
-                                System.out.println("unchoke functionality");
-                                choked = false;
-                            } else if (Arrays.equals(messageType, messageTypeMap.get("have"))) {
+                                    byte[] msg = byteStream.toByteArray();
+                                    System.out.println("sending first request to "+ serverPeerID);
+                                    sendMessage(msg); // requesting the piece
+                                    byteStream.reset();
 
-                                byte pieceNumBuff[] = new byte[4];
-                                cDIN.read(pieceNumBuff);
-                                int pieceNum = ByteBuffer.wrap(pieceNumBuff).getInt();
-                                logHave(pID, serverPeerID, pieceNum);
-
-                                // add the peice to the neighbor's map, and then check if its done
-                                peerPieceMap.replace(pieceNum, true); // the neighbor has this piece
-
-                                // if we do not have this piece, add to the list of pieces to request
-                                if (!pieceMap.containsKey(pieceNum)) {
-                                    peerPieceList.add(pieceNum);
                                 }
 
-                                // if the server who sent the message is done, log that they are done
-                                if (!peerPieceMap.containsValue(false)) {
-                                    System.out.println(pID + " says that " + serverPeerID + "is done!");
-                                    peersDone.replace(serverPeerID, true); // server is done, has all pieces
-                                }
 
-                            } else if (Arrays.equals(messageType, messageTypeMap.get("piece"))) { 
+                               
+                            } 
+                            else if (Arrays.equals(incomingMessage, messageTypeMap.get("interested"))) {
+                                //send piece
+                                System.out.println("interested functionality");
+                                logInterested(pID, serverPeerID);
+                                // Retrieve which piece the peer wants
+                                byte[] pieceNumToSend = Arrays.copyOfRange(incomingMessage, 5, 9);
+                                int pieceNumInt = ByteBuffer.wrap(pieceNumToSend).getInt();                                                       
+                               
+                                //Initiate sendPiece for that piece number
+                                sendPiece(pieceNumInt);
+                            } 
+                            else if (Arrays.equals(messageType, messageTypeMap.get("piece"))) { 
 
                                 // client_din.read(incomingMessage, 5, 9); // check on this
-
+                                System.out.println("fsfsfsdsdgdsfgsdfgsdfgs");
                                 byte[] fileIndex = Arrays.copyOfRange(incomingMessage, 5, 9);
                                 int incomingPieceNumber = ByteBuffer.wrap(fileIndex).getInt(); // number corresponds to
 
@@ -790,7 +866,7 @@ public class peerProcess {
                                     peerPieceList.remove(peerPieceList.indexOf(incomingPieceNumber));
                                 }
                                 logDownload(pID, serverPeerID, incomingPieceNumber);
-                                sendHaveMessage(incomingPieceNumber, serverPeerID); //will be used for have message
+                               // sendHaveMessage(incomingPieceNumber, serverPeerID); //will be used for have message
 
                                 // THIS PIECE FUNCTIONALITY IS CURRENTLY CAUSING PROBLEMS
 
@@ -831,7 +907,50 @@ public class peerProcess {
                                 }
 
                             }
-                            // client loop stays open to maintain connection until end of program
+                            else if (Arrays.equals(messageType, messageTypeMap.get("unchoke"))) {
+                                System.out.println("unchoke functionality");
+                                choked = false;
+                            } 
+                            else if (Arrays.equals(messageType, messageTypeMap.get("have"))) {
+
+                                System.out.println("sdfasdfadsf");
+                                int pieceNum = ByteBuffer.wrap(Arrays.copyOfRange(incomingMessage, 5, 9)).getInt();
+                                // Retrieve which piece the peer wants
+                                byte[] pieceNumToSend = Arrays.copyOfRange(incomingMessage, 5, 9);
+                                int pieceNumInt = ByteBuffer.wrap(pieceNumToSend).getInt();
+
+                                //if(isOwner==0){
+                                //  
+                                //}
+
+                                if(!pieceMap.containsKey(pieceNumInt)){                                    
+                                    System.out.println("Sending interested message");
+                                    sendInterestedMessage(pieceNumInt, serverPeerID);     
+                                }
+                               //log "have" info for that piece
+                               logHave(pID, serverPeerID, pieceNumInt);
+                                byte pieceNumBuff[] = new byte[4];
+                                cDIN.read(pieceNumBuff);
+                               // int pieceNumInt = ByteBuffer.wrap(pieceNumBuff).getInt();
+                               // logHave(pID, serverPeerID, pieceNum);
+
+
+
+                                // add the peice to the neighbor's map, and then check if its done
+                                peerPieceMap.replace(pieceNum, true); // the neighbor has this piece
+
+                                // if we do not have this piece, add to the list of pieces to request
+                                if (!pieceMap.containsKey(pieceNum)) {
+                                    peerPieceList.add(pieceNum);
+                                }
+
+                                //// if the server who sent the message is done, log that they are done
+                                //if (!peerPieceMap.containsValue(false)) {
+                                //    System.out.println(pID + " says that " + serverPeerID + "is done!");
+                                //    peersDone.replace(serverPeerID, true); // server is done, has all pieces
+                                //}
+
+                            }  // client loop stays open to maintain connection until end of program                       
                             if (clientQuit) {
 
                                 System.out.println("quit");
@@ -886,10 +1005,57 @@ public class peerProcess {
             }
         }
 
-        void sendMessage(byte[] msg) {
+        private void sendHaveMessage(int pieceNumInt, int serverPeerID) throws IOException {
+             //initialise a buffer to store piece using piece map
+             // byte[] pieceBuffer = pieceMap.get(pieceNumInt);
+             System.out.println("pohocha");
+              //  Construct Message header
+              messageLength = ByteBuffer.allocate(4).putInt(4).array(); //piece size
+              messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("have")).array();  //message type
+              indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+
+              //write Message header
+              byteStream.reset(); // reset bytestream       
+              byteStream.write(messageLength);
+              byteStream.write(messageType); 
+              byteStream.write(indexField);
+              //Write piece data
+             // byteStream.write(pieceBuffer);
+              byte[] sendMessage = byteStream.toByteArray();
+              //call the sendMessage function and provide it with the complete message
+              sendMessage(sendMessage); // sending the piece message
+              byteStream.reset();
+        }
+
+        private void sendInterestedMessage(int pieceNumInt, int serverPeerID) throws IOException {
+
+
+             //initialise a buffer to store piece using piece map
+             // byte[] pieceBuffer = pieceMap.get(pieceNumInt);
+             System.out.println("pohocha");
+              //  Construct Message header
+              messageLength = ByteBuffer.allocate(4).putInt(4).array(); //piece size
+              messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("interested")).array();  //message type
+              indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+
+              //write Message header
+              byteStream.reset(); // reset bytestream       
+              byteStream.write(messageLength);
+              byteStream.write(messageType); 
+              byteStream.write(indexField);
+              //Write piece data
+             // byteStream.write(pieceBuffer);
+              byte[] sendMessage = byteStream.toByteArray();
+              //call the sendMessage function and provide it with the complete message
+              sendMessage(sendMessage); // sending the piece message
+              byteStream.reset();
+
+        }
+
+        void sendMessage(byte[] message) {
             try {
                 cDOUT.flush();
-                cDOUT.write(msg);
+                cDOUT.write(message);
 
             } catch (IOException ioException) {
                 ioException.printStackTrace();
@@ -910,6 +1076,32 @@ public class peerProcess {
             }
             return -1;
         }
+        // Send piece function: Takes a piece number and sends it in a message
+        void sendPiece(int pieceNumInt) throws IOException {
+
+            //initialise a buffer to store piece using piece map
+            byte[] pieceBuffer = pieceMap.get(pieceNumInt);
+            int payload = pieceBuffer.length;
+
+            //  Construct Message header
+            messageLength = ByteBuffer.allocate(4).putInt(payload).array(); //piece size
+            messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("piece")).array();  //message type
+            indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+
+            //write Message header
+            byteStream.reset(); // reset bytestream       
+            byteStream.write(messageLength);
+            byteStream.write(messageType); 
+            byteStream.write(indexField);
+            //Write piece data
+            byteStream.write(pieceBuffer);
+            byte[] sendMessage = byteStream.toByteArray();
+            //call the sendMessage function and provide it with the complete message
+            sendMessage(sendMessage); // sending the piece message
+            byteStream.reset();
+        }
+       
+        
     }
 
     //Hashmap for message
@@ -935,6 +1127,8 @@ public class peerProcess {
 
         return map;
     }
+
+    
 
     //Generate BitField messages that are sent after the handshake
     static byte[] initializeBitfield() {
@@ -979,32 +1173,52 @@ public class peerProcess {
     }
 
     
-    static void sendHaveMessage(int haveIndex, int serverID) throws IOException {
-
-        for (int n : neighborMap.keySet()) {
-            if (n != serverID) 
-             {
-                Socket S1 = neighborMap.get(n);
-                System.out.println("Sending 'have' message to neighbor " + n);
-                OutputStream OS1 = S1.getOutputStream();
-
-                byte[] messageLength = ByteBuffer.allocate(4).putInt(4).array(); // allocate 4 bytes for index
-                byte[] messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("have")).array();
-                byte[] requestIndex = ByteBuffer.allocate(4).putInt(haveIndex).array();
-                byteStream.reset();
-                byteStream.write(messageLength);
-                byteStream.write(messageType);
-                byteStream.write(requestIndex);
-
-                byte[] msg = byteStream.toByteArray();
-                OS1.flush();
-                OS1.write(msg);
-                byteStream.reset();
-            }
-
-        }
-    }
-
+   // static void sendHaveMessage(int haveIndex, int serverID) throws IOException {
+//
+   //     System.out.println("pohocha");
+   //     //  Construct Message header
+   //     byte[] messageLength = ByteBuffer.allocate(4).putInt(4).array(); //piece size
+   //     byte[]  messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("interested")).array();  //message type
+   //     byte[] indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+//
+   //     //write Message header
+   //     byteStream.reset(); // reset bytestream       
+   //     byteStream.write(messageLength);
+   //     byteStream.write(messageType); 
+   //     byteStream.write(indexField);
+   //     //Write piece data
+   //    // byteStream.write(pieceBuffer);
+   //     byte[] sendMessage = byteStream.toByteArray();
+   //     //call the sendMessage function and provide it with the complete message
+   //     sendMessage(sendMessage); // sending the piece message
+   //     byteStream.reset();
+   // 
+   //     //Socket S1 = neighborMap.get(n);
+   //     //System.out.println("Sending 'have' message to neighbor " + n);
+   //     //OutputStream OS1 = S1.getOutputStream();
+////
+   //     //byte[] messageLength = ByteBuffer.allocate(4).putInt(4).array(); // allocate 4 bytes for index
+   //     //byte[] messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("have")).array();
+   //     //byte[] requestIndex = ByteBuffer.allocate(4).putInt(haveIndex).array();
+   //     //byteStream.reset();
+   //     //byteStream.write(messageLength);
+   //     //byteStream.write(messageType);
+   //     //byteStream.write(requestIndex);
+////
+   //     //byte[] msg = byteStream.toByteArray();
+   //     //OS1.flush();
+   //     //OS1.write(msg);
+   //     //byteStream.reset();
+////
+   //     //for (int n : neighborMap.keySet()) {
+   //     //    if (n != serverID) 
+   //     //     {
+   //     //       
+   //     //    }
+////
+   //     //}
+   // }
+//
     /** Logger Functions: 
      * These are called to maintain Logs */ 
 
