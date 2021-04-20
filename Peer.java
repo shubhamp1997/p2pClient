@@ -801,7 +801,7 @@ public class Peer {
                                 }
                                 byte[] finalFile = byteStream.toByteArray();
 
-                                String pathname = file.getAbsolutePath() + "/" + "copy.txt"; 
+                                String pathname = file.getAbsolutePath() + "/" + fileName; 
                                
                                 // stored in the user's folder
                                 File copiedFile = new File(pathname);
