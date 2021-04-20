@@ -5,7 +5,7 @@ import java.net.*;
 import java.nio.*;
 
 
-public class Peer {
+public class peerProcess {
 
     /** Authors:
      *  Shubham Pandey
