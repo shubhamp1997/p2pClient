@@ -465,13 +465,13 @@ static class Handler extends Thread {
                             sendPiece(pieceNumInt);
 
                             //Inform piece map and set the value to true
-                            peerPieceMap.replace(pieceNumInt, true);                                
-                            if (!peerPieceMap.containsValue(false)) {
-                                peersDone.replace(NeighborPeerID, true);
-                                if (!peersDone.containsValue(false)) {
-                                    System.out.println("File Received");
-                                }
-                            }
+                            // peerPieceMap.replace(pieceNumInt, true);                                
+                            // if (!peerPieceMap.containsValue(false)) {
+                            //     peersDone.replace(NeighborPeerID, true);
+                            //     if (!peersDone.containsValue(false)) {
+                            //         System.out.println("File Received");
+                            //     }
+                            // }
                             received = new byte[5 + pieceSize];                            
                             if (serverQuit) {
                                 // Close server process and flush data output stream                                   
@@ -834,10 +834,10 @@ static class Neighbor extends Thread {
                         // Neighbor loop stays open to maintain connection until end of program
                         if (NeighborQuit) {
 
-                            System.out.println("quit");
-                            // when done, we need to write the file to the Neighbor's folder
-                            logDone(pID);
-                            byteStream.reset();
+                            // System.out.println("quit");
+                            // // when done, we need to write the file to the Neighbor's folder
+                            // logDone(pID);
+                            // byteStream.reset();
 
                             // get all the pieces from the piece map
                             for (int i = 1; i <= pieceMap.size(); i++) {
@@ -856,11 +856,11 @@ static class Neighbor extends Thread {
                             }
 
                             // System.out.println("Neighbor: final file has been written");
-                            byteStream.flush();
-                            byteStream.reset();
+                            // byteStream.flush();
+                            // byteStream.reset();
 
                             // Now, this Neighbor becomes an uploader only
-                            NeighborLoop = false;
+                            //NeighborLoop = false;
                         }
 
                         incomingMessage = new byte[100 + pieceSize];
