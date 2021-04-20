@@ -243,7 +243,8 @@ public class peerProcess {
     }
 
     /**Handler class, running on new thread to 
-     * help handle, initiate, and close peeer connections */
+     * help handle, initiate, and close peeer connections 
+     * and sends, checks handshakes, bitfield and also Actual messages with payload*/
     static class Handler extends Thread {       
         
         private DataInputStream dataIn;
@@ -277,11 +278,9 @@ public class peerProcess {
 
         @Override
         public void run() {
-
             //Try to connect with the socket
             System.out.println("Connecting with: " + connection.toString());
             try {
-
                 //initialize Input and Output streams
                 dataOut = new DataOutputStream(connection.getOutputStream());
                 dataIn = new DataInputStream(connection.getInputStream());
@@ -290,7 +289,6 @@ public class peerProcess {
                 boolean serverQuit = false;
 
                 while (serverProc) {
-
                     // First: perform handshake if not already
                     if (!handshakeDone) {
 
@@ -439,8 +437,8 @@ public class peerProcess {
                                 logNotInterested(pID, clientPeerID);
                             } 
                            
-                             //if the message is "have"
-                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("have"))) { // SERVER HAVE
+                             //if the message is "have", means peer HAVE the piece
+                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("have"))) { 
 
                                 int pieceNum = ByteBuffer.wrap(Arrays.copyOfRange(received, 5, 9)).getInt();
                                 
@@ -456,44 +454,44 @@ public class peerProcess {
 
                             }
 
-                            //if peer has sent piece request
-                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("request"))) { // REQUEST
-                                // if not choked
+                            //if peer has sent request message for a piece
+                            else if (Arrays.equals(incomingMessageType, messageTypeMap.get("request"))) { 
+                              
+                                // Retrieve which piece the peer wants
                                 byte[] pieceNumToSend = Arrays.copyOfRange(received, 5, 9);
                                 int pieceNumInt = ByteBuffer.wrap(pieceNumToSend).getInt();
                                
+                                //Initiate sendPiece for that piece number
                                 sendPiece(pieceNumInt);
 
-                                peerPieceMap.replace(pieceNumInt, true);
+                                //Inform piece map and set the value to true
+                                peerPieceMap.replace(pieceNumInt, true);                                
                                 if (!peerPieceMap.containsValue(false)) {
                                     peersDone.replace(clientPeerID, true);
                                     if (!peersDone.containsValue(false)) {
-                                        System.out.println("shut down needed");
+                                        System.out.println("File Received");
                                     }
-
                                 }
-
-                                received = new byte[5 + pieceSize];
-
+                                received = new byte[5 + pieceSize];                            
                                 if (serverQuit) {
-                                    System.out.println("quit it true");
+                                    // Close server process and flush data output stream                                   
                                     dataOut.flush();
-                                    // bis.close();
-                                    // sc.close();
-                                    // System.out.println("File Transfer Complete.");
                                     serverProc = false;
                                 }
                             }
                         }
-
                     }
+                    
+                    // Report that handshaks has been performed
                     handshakeDone = true; // received handshake
                     received = new byte[5 + pieceSize];
                 }
-            } catch (IOException ioException) {
+            } 
+            catch (IOException ioException) {
                 System.out.println("Disconnect with Client " + clientPeerID);
                 logger.warning("Disconnection with " + clientPeerID + " due to IOException");
-            } finally {
+            } 
+            finally {
                 // Close connections
                 try {
                     dataIn.close();
@@ -505,12 +503,37 @@ public class peerProcess {
                 }
             }
         }
+        
+        // Send piece function: Takes a piece number and sends it in a message
+        void sendPiece(int pieceNumInt) throws IOException {
 
-        // sending message function
-        void sendMessage(byte[] msg) {
+            //initialise a buffer to store piece using piece map
+            byte[] pieceBuffer = pieceMap.get(pieceNumInt);
+            int payload = pieceBuffer.length;
+
+            //  Construct Message header
+            messageLength = ByteBuffer.allocate(4).putInt(payload).array(); //piece size
+            messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("piece")).array();  //message type
+            indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // starting point index
+
+            //write Message header
+            byteStream.reset(); // reset bytestream       
+            byteStream.write(messageLength);
+            byteStream.write(messageType); 
+            byteStream.write(indexField);
+            //Write piece data
+            byteStream.write(pieceBuffer);
+            byte[] sendMessage = byteStream.toByteArray();
+            //call the sendMessage function and provide it with the complete message
+            sendMessage(sendMessage); // sending the piece message
+            byteStream.reset();
+        }
+
+        //Send message: takes a message and writes it to the output stream
+        void sendMessage(byte[] message) {
             try {
                 dataOut.flush();
-                dataOut.write(msg);
+                dataOut.write(message);
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -522,40 +545,15 @@ public class peerProcess {
             }
         }
 
-        // method used for sending a specific piece
-        void sendPiece(int pieceNumInt) throws IOException {
-
-            byte[] pieceBuffer = pieceMap.get(pieceNumInt);
-            int payload = pieceBuffer.length;
-
-            // for header
-            messageLength = ByteBuffer.allocate(4).putInt(payload).array();
-            messageType = ByteBuffer.allocate(1).put(messageTypeMap.get("piece")).array();
-            indexField = ByteBuffer.allocate(4).putInt(pieceNumInt).array(); // index of starting point
-
-            byteStream.reset(); // make sure byteStream is empty
-
-            // header
-            byteStream.write(messageLength);
-            byteStream.write(messageType); // should equal binary 7 for "piece"
-            byteStream.write(indexField);
-
-            // actual piece
-            byteStream.write(pieceBuffer);
-
-            byte[] sendMessage = byteStream.toByteArray();
-            sendMessage(sendMessage); // sending the piece message
-            byteStream.reset();
-
-        }
-
     }
     
+
+    //Handles same functionalities for the client side
     static class Client extends Thread {
 
         Socket requestSocket;
-        DataInputStream client_din;
-        DataOutputStream client_dout;
+        DataInputStream cDIN;
+        DataOutputStream cDOUT;
 
         // whether handshake has been completed
         boolean handshakeDone = false;
@@ -582,7 +580,7 @@ public class peerProcess {
         int serverPeerID = -1;
 
         /**
-         * each "client" can only connect to one other server, and keeps track of that
+         * each "client"(peer) can only connect to one other server, and keeps track of that
          * map
          */
         HashMap<Integer, Boolean> peerPieceMap = new HashMap<Integer, Boolean>();
@@ -592,18 +590,7 @@ public class peerProcess {
         // whether to continue running client loop
         boolean clientLoop = true;
 
-        public Client(int portNum, int pID) {
-            this.portNum = portNum;
-            this.pID = pID;
-
-        }
-
-        public Client(int portNum, String hostname, int pID) {
-            this.pID = pID;
-            this.hostname = hostname;
-            this.portNum = portNum;
-        }
-
+        //Client Getter
         public Client(int portNum, String hostname, int pID, Socket requestSocket) {
             this.pID = pID;
             this.hostname = hostname;
@@ -614,14 +601,13 @@ public class peerProcess {
         @Override
         public void run() {
             try {
-
                 // just to be safe
                 byteStream.reset();
 
                 // input and output streams for client
-                client_din = new DataInputStream(requestSocket.getInputStream());
-                client_dout = new DataOutputStream(requestSocket.getOutputStream());
-                client_dout.flush();
+                cDIN = new DataInputStream(requestSocket.getInputStream());
+                cDOUT = new DataOutputStream(requestSocket.getOutputStream());
+                cDOUT.flush();
 
                 while (clientLoop) {
 
@@ -634,7 +620,7 @@ public class peerProcess {
                         byte[] zerobits = new byte[10]; // 10 byte zero bits
                         Arrays.fill(zerobits, (byte) 0);
                         byte[] peerID = ByteBuffer.allocate(4).putInt(pID).array(); // peer ID in byte array
-                                                                                          // format
+                                                                                         
                         // System.out.println("client sending my peer id: " + pID);
 
                         // write all information to a byte array
@@ -651,7 +637,7 @@ public class peerProcess {
                         // client waiting for handshake mesage from server
                         byte[] incomingHandshake = new byte[32]; // empty byte array for incoming handshake
 
-                        client_din.read(incomingHandshake); // read in the incoming handshake
+                        cDIN.read(incomingHandshake); // read in the incoming handshake
 
                         // getting server peerID
                         byte[] checkServerID = Arrays.copyOfRange(incomingHandshake, 28, 32);
@@ -692,7 +678,7 @@ public class peerProcess {
                         byte[] incomingMessage = new byte[5]; // only done once
                         boolean clientQuit = false; // used for when to quit to write to file
 
-                        while (client_din.read(incomingMessage) > -1) {
+                        while (cDIN.read(incomingMessage) > -1) {
 
                             // retrieve message type
                             byte[] messageSize = Arrays.copyOfRange(incomingMessage, 0, 4);
@@ -711,7 +697,7 @@ public class peerProcess {
                                 byte[] bitfieldMessage = new byte[bitfieldLength];
 
                                 // read in the rest of the message
-                                client_din.read(bitfieldMessage);
+                                cDIN.read(bitfieldMessage);
                                 int counter = 1;
 
                                 // update map with received bitfield from server
@@ -772,7 +758,7 @@ public class peerProcess {
                             } else if (Arrays.equals(messageType, messageTypeMap.get("have"))) {
 
                                 byte pieceNumBuff[] = new byte[4];
-                                client_din.read(pieceNumBuff);
+                                cDIN.read(pieceNumBuff);
                                 int pieceNum = ByteBuffer.wrap(pieceNumBuff).getInt();
                                 logHave(pID, serverPeerID, pieceNum);
 
@@ -902,8 +888,8 @@ public class peerProcess {
 
         void sendMessage(byte[] msg) {
             try {
-                client_dout.flush();
-                client_dout.write(msg);
+                cDOUT.flush();
+                cDOUT.write(msg);
 
             } catch (IOException ioException) {
                 ioException.printStackTrace();
