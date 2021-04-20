@@ -1023,25 +1023,25 @@ public class peerProcess {
     /** Logs to which peer the connection has been established,
      *  Takes 2 peers and logs their Connection */
     static void logConnectionTo(int peerID1, int peerID2) {
-        logger.info("Peer [" + peerID1 + "] is connected to Peer [" + peerID2 + "]");
+        logger.info("Peer [" + peerID1 + "] is connected from Peer [" + peerID2 + "]");
     }
 
     /** Logs from which peer the connection has been established,
      *  Takes 2 peers and logs their Connection */
     static void logConnectionFrom(int peerID1, int peerID2) {
-        logger.info("Peer [" + peerID1 + "] is connected from Peer [" + peerID2 + "]");
+        logger.info("Peer [" + peerID1 + "] makes a connection to Peer [" + peerID2 + "]");
     }
 
     /** Logs from which peer the BitField meessage has come from,
      *  Takes 2 peers and logs their BitFields */
     static void logBitfieldFrom(int peerID1, int peerID2) {
-        logger.info("Peer [" + peerID1 + "] received bitfield message from [" + peerID2 + "]");
+        //logger.info("Peer [" + peerID1 + "] received bitfield message from [" + peerID2 + "]");
     }
 
     /** Logs a change in Neighbors, takes a peer and a peerList 
      * and reports its changed neighbors */
     static void logchangeNeighbors(int peerID1, int[] peerList) {
-        logger.info("Peer [" + peerID1 + "] has neighbors [" + Arrays.toString(peerList) + "]");
+        logger.info("Peer [" + peerID1 + "] has the preffered neighbors [" + Arrays.toString(peerList) + "]");
     }
 
     /** Logs Optimistically unchoked neighbors, takes 2 peers
@@ -1053,7 +1053,7 @@ public class peerProcess {
     /** Logs Unchoked peers, takes 2 peers
      * and reports which peer has Unchocked which peer */
     static void logUnchoked(int peerID1, int peerID2) {
-        logger.info( "Peer [" + peerID2 + "} Has Unchocked Peer [" + peerID1 );
+        logger.info( "Peer [" + peerID1 + "} is unchocked by [" + peerID2 );
     }
 
     /** Logs Choked peers, takes 2 peers
