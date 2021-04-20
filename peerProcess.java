@@ -1008,75 +1008,67 @@ public class peerProcess {
     /** Logger Functions: 
      * These are called to maintain Logs */ 
 
-    /** Logs to which peer the connection has been established,
-     *  Takes 2 peers and logs their Connection */
+    /**Log which identifies from which Peer the
+     *  TCP connection is made */
     static void logConnectionTo(int peerID1, int peerID2) {
         logger.info("Peer [" + peerID1 + "] is connected from Peer [" + peerID2 + "]");
     }
 
-    /** Logs from which peer the connection has been established,
-     *  Takes 2 peers and logs their Connection */
+    /** Log which identifies which Peer makes the connection
+     *  to which other Peer */
     static void logConnectionFrom(int peerID1, int peerID2) {
         logger.info("Peer [" + peerID1 + "] makes a connection to Peer [" + peerID2 + "]");
     }
 
-    /** Logs from which peer the BitField meessage has come from,
-     *  Takes 2 peers and logs their BitFields */
+    /** Log to identify which peer sent the bitfield to which peer*/
     static void logBitfieldFrom(int peerID1, int peerID2) {
-        //logger.info("Peer [" + peerID1 + "] received bitfield message from [" + peerID2 + "]");
+        logger.info("Peer [" + peerID1 + "] received bitfield message from [" + peerID2 + "]");
     }
 
-    /** Logs a change in Neighbors, takes a peer and a peerList 
-     * and reports its changed neighbors */
+    /** Log to identify when a peer changes its preffered neighbours 
+     * and also which neighbours was it changed to*/
     static void logchangeNeighbors(int peerID1, int[] peerList) {
         logger.info("Peer [" + peerID1 + "] has the preffered neighbors [" + Arrays.toString(peerList) + "]");
     }
 
-    /** Logs Optimistically unchoked neighbors, takes 2 peers
-     * and reports its optimistically unchoked neighbors */
+    /** Log to identify optimistically unchoked neighbours when the peer changes it*/
     static void logchangeOpUnchokeNeighbor(int peerID1, int opUnNeighbor) {
         logger.info("Peer [" + peerID1 + "] has the optimistically unchoked neighbor [" + opUnNeighbor + "]");
     }
 
-    /** Logs Unchoked peers, takes 2 peers
-     * and reports which peer has Unchocked which peer */
+    /** Log to identify when a peer is unchoked by another peer */
     static void logUnchoked(int peerID1, int peerID2) {
         logger.info( "Peer [" + peerID1 + "} is unchocked by [" + peerID2 );
     }
 
-    /** Logs Choked peers, takes 2 peers
-     * and reports which peer has chocked which peer */
+    /** Log to identify when a peer is choked by another peer */
     static void logChoked(int peerID1, int peerID2) {
         logger.info("Peer [" + peerID1 + "] is choked by [" + peerID2 + "]");
     }
 
-    /** Logs when a peer sends 'Have' message to another Peer for a particular Piece,
-     * Takes 2 peers and a piece number */
+    /** Log to identify when a have message is received and for which Piece */
     static void logHave(int peerID1, int peerID2, int pieceNum) {
         logger.info("Peer [" + peerID1 + "] received the 'have' message from [" + peerID2 + "] for the piece ["
                 + pieceNum + "]");
     }
 
-    /** Logs when a peer sends 'Interested' message to another Peer,
-     * Takes 2 peers */
+    /** Log to identify when an interested message is received */
     static void logInterested(int peerID1, int peerID2) {
         logger.info("Peer [" + peerID1 + "] received the 'interested' message from [" + peerID2);
     }
 
-    /** Logs when a peer sends 'Not Interested' message to another Peer,
-     * Takes 2 peers */
+    /**  Log to identify when an interested message is received*/
     static void logNotInterested(int peerID1, int peerID2) {
         logger.info("Peer [" + peerID1 + "] received the 'not interested' message from [" + peerID2);
     }
 
-    /** Keeps a Log for how many pieces has the peer downloaded from from the peer 
-     * and shows how many pieces are remaining using the Piece Map are remaining. */
+    /** Log to keep a track of which piece has been downloaded and how many pieces have been downloaded */
     static void logDownload(int peerID1, int peerID2, int pieceNum) {
         logger.info("Peer [" + peerID1 + "] has downloaded the piece [" + pieceNum + "] from [" + peerID2 + "]. "
                 + "Now the number of pieces it has is " + pieceMap.size() + ".");
     }
 
-    /** Logs when a peer has downloaded the complete file */
+    /** Log to identify when the complete file has been downloaded */
     static void logDone(int peerID) {
         logger.info("Peer [" + peerID + "] has downloaded the complete file.");
     }
