@@ -140,6 +140,7 @@ public class peerProcess {
                         File file = new File(fileName);
                         System.out.println(file.length());
 
+                        //To transfer the orginal file to directory of the Owner Peer
                         try (FileInputStream fileInputStream = new FileInputStream(file);){
 
                             FileOutputStream fileOutpoutStream = new FileOutputStream(System.getProperty("user.dir") + "/" + "peer_" + pID + "/" + fileName);
