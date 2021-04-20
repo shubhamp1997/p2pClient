@@ -1,8 +1,8 @@
-import java.util.*;
-import java.util.logging.*;
-import java.io.*;
-import java.net.*;
-import java.nio.*;
+    import java.util.*;
+    import java.util.logging.*;
+    import java.io.*;
+    import java.net.*;
+    import java.nio.*;
 
 
 public class peerProcess {
@@ -429,12 +429,14 @@ public class peerProcess {
                             if (Arrays.equals(incomingMessageType, messageTypeMap.get("interested"))) {
                                 //send piece
                                 System.out.println("interested functionality");
+                                logInterested(pID, clientPeerID);
                                 sendPiece(1); 
                             } 
                             
                             // if the message is "not_interested"
                             else if (Arrays.equals(incomingMessageType, messageTypeMap.get("not_interested"))) {
                                 System.out.println("not_interested functionality");
+                                logNotInterested(pID, clientPeerID);
                             } 
                            
                              //if the message is "have"
