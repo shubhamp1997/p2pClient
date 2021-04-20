@@ -1,7 +1,7 @@
 to run this program, 
 
-> javac Peer.java
+> javac peerProcess.java
 
-> java Peer <peerNum>
+> java peerProcess <peerNum>
 example:
-java Peer 1001
+java peerProcess 1001

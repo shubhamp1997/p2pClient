@@ -5,7 +5,7 @@ JFLAGS = -g
 	$(JC) $(JFLAGS) $*.java
 
 CLASSES = \
-	Peer.java 
+	peerProcess.java 
 default: classes
 
 classes: $(CLASSES:.java=.class)
